@@ -1,5 +1,7 @@
+import apitoken
 
-smashGG_Token = "Bearer d8d8a83ccc5816aab490c4a0da63128f"
+smashGG_Token = apitoken.smashGG_Token
+
 # smashGG graphQL Ex:
 # query SocalTournaments($perPage: Int, $coordinates: String!, $radius: String!) {
 #   tournaments(query: {
@@ -23,6 +25,8 @@ smashGG_Token = "Bearer d8d8a83ccc5816aab490c4a0da63128f"
 #   "coordinates": "33.7454725,-117.86765300000002",
 #   "radius": "50mi"
 # }
+
+
 
 from gql import gql, Client
 #from gql.transport.aiohttp import AIOHTTPTransport
