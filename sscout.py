@@ -1,6 +1,11 @@
+from flask import Flask, render_template
+from datetime import datetime
+
 import apitoken
 
 smashGG_Token = apitoken.smashGG_Token
+
+app = Flask(__name__)
 
 #https://smash.gg/tournament/port-priority-6/details
 # smashGG graphQL Ex:
@@ -230,7 +235,13 @@ testPortPriorityQuery = """
 }
 """
 
-result = client.execute(gql(testPortPriorityQuery))
-print(result)
+# result = client.execute(gql(testPortPriorityQuery))
+# print(result)
 
 #eventually raw JSON FORM and then we can just stringify
+
+@app.route("/")
+def sscoutHome():
+  return render_template('index.html')
+if __name__ == "__main__":
+    app.run(debug=True)
