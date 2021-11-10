@@ -1,6 +1,11 @@
+from flask import Flask, render_template, request
+from datetime import datetime
+import json
 import apitoken
 
 smashGG_Token = apitoken.smashGG_Token
+
+app = Flask(__name__)
 
 #https://smash.gg/tournament/port-priority-6/details
 # smashGG graphQL Ex:
@@ -44,50 +49,50 @@ client = Client(transport=transport, fetch_schema_from_transport=True)
 # Provide a GraphQL query
 query = gql(
     """
-{tournaments(query: {
-    perPage: 4
-    filter: {
-      location: {
-        distanceFrom: "33.7454725,-117.86765300000002",
-        distance: "5mi"
+  {tournaments(query: {
+      perPage: 4
+      filter: {
+        location: {
+          distanceFrom: "33.7454725,-117.86765300000002",
+          distance: "5mi"
+        }
+      }
+    }) {
+      nodes {
+        id
+        name
+        city
       }
     }
-  }) {
-    nodes {
-      id
-      name
-      city
-    }
   }
-}
-""")
+  """)
 
 
 #let's start with getting Port Priority 6
 
 testTournamentQuery = """
-{
-  tournaments(query:{
-    perPage: 5
-    filter: {
-      addrState: "WA"
-      afterDate: 1635145200
-      beforeDate: 1635836400
-    }
-  }) {
-    nodes 
-    {
-      id
-      countryCode
-      name
-      numAttendees
-      slug
-      venueName
-      venueAddress
+  {
+    tournaments(query:{
+      perPage: 5
+      filter: {
+        addrState: "WA"
+        afterDate: 1635145200
+        beforeDate: 1635836400
+      }
+    }) {
+      nodes 
+      {
+        id
+        countryCode
+        name
+        numAttendees
+        slug
+        venueName
+        venueAddress
+      }
     }
   }
-}
-"""
+  """
 
 """
 query TournamentsByState($perPage: Int, $state: String!) {
@@ -123,9 +128,12 @@ testQueryUser = """
 
 testZachQuery = """
 {tournaments(query: {
-    perPage: 4
+    perPage: 10
     filter: {
-      addrState: "WA"
+      location: {
+        distanceFrom: "%s",
+        distance: "%s"
+      }
     }
   }) 
   {
@@ -229,8 +237,136 @@ testPortPriorityQuery = """
   }
 }
 """
+tournamentByRadiusQueryStr = """
+{
+  tournaments(query: {
+    perPage: 10
+    filter: {
+      location: {
+        distanceFrom: "%s",
+        distance: "%s"
+      }
+    }
+  }) 
+  {
+  nodes
+    {
+      name
+      url
+      id
+      addrState
+      images
+        {
+        url
+        }
+      city
+      countryCode
+      isRegistrationOpen
+      startAt
+      endAt
+      links
+      {
+        facebook
+        discord
+      }
+      participants(query: {
+        perPage: 5
+        page: 1
+        sortBy: "seed"
+      })
+      {
+        nodes
+        {
+          user
+          {
+            id
+            name
+            slug
+            player
+            {
+              id
+              gamerTag
+            }
+            authorizations
+            {
+              externalUsername
+              type
+              url
+            }            
+          }
+          contactInfo
+          {
+            id
+            city
+            country
+            countryId
+            name
+            nameFirst
+            nameLast
+            state
+            stateId
+            zipcode
+          }
+          connectedAccounts
+          email
+        }
+      }        
+    }
+  }
+}
+"""
 
-result = client.execute(gql(testPortPriorityQuery))
-print(result)
+
+# result = client.execute(gql(testPortPriorityQuery))
+# print(result)
 
 #eventually raw JSON FORM and then we can just stringify
+
+@app.route("/")
+def sscoutHome():
+  return render_template('index.html')
+
+@app.route("/sscoutAPI/smashgg" , methods = ['POST'])
+def sscoutAPI_Smashgg():
+  transport = RequestsHTTPTransport(url="https://api.smash.gg/gql/alpha", headers={'Authorization': smashGG_Token}, use_json=True)
+  # Create a GraphQL client using the defined transport
+  client = Client(transport=transport, fetch_schema_from_transport=True)
+  if request.form.get("type") == 'TournamentsByCoords':
+    result = ""
+    coords = request.form.get('coordinates')
+    radius = request.form.get("radius")
+    print(radius, coords)
+    query = tournamentByRadiusQueryStr % (coords, radius)
+    #oh damn this actually returns a dict
+    queryResultDict = client.execute(gql(query))
+    print(queryResultDict)
+    # article format from html template
+    # <article>
+    # 	<header>
+    # 		<span class="date">April 24, 2017</span>
+    # 		<h2><a href="#">Sed magna<br />
+    # 		ipsum faucibus</a></h2>
+    # 	</header>
+    # 	<a href="#" class="image fit"><img src="/static/images/pic02.jpg" alt="" /></a>
+    # 	<p>Donec eget ex magna. Interdum et malesuada fames ac ante ipsum primis in faucibus. Pellentesque venenatis dolor imperdiet dolor mattis sagittis magna etiam.</p>
+    # 	<ul class="actions special">
+    # 		<li><a href="#" class="button">Full Story</a></li>
+    # 	</ul>
+    # </article>
+
+
+    html = ""
+    for tournament in queryResultDict['tournaments']['nodes']:
+      html += """
+          <article>
+            <header>
+              <h2><a href="?tournament="""+str(tournament['id'])+"""">"""+tournament['name']+"""</a></h2>
+              <h3>"""+datetime.fromtimestamp(tournament['startAt']).strftime("%x")+"""</h3>
+              <h3>"""+tournament['city']+ ", " +tournament['addrState']+"""</h3>
+            </header>
+            <a href="?tournament="""+str(tournament['id'])+"""" class="image fit"><img src=" """+tournament['images'][0]['url']+""" " alt="" /></a>
+          </article>"""
+  return html
+
+if __name__ == "__main__":
+    app.run(debug=True)
