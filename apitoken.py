@@ -1,0 +1,1 @@
+smashGG_Token = "Bearer d8d8a83ccc5816aab490c4a0da63128f"

@@ -20,6 +20,7 @@
 			
 			function getLocation() {
 			var x = document.getElementById("demo");
+			
 			if (navigator.geolocation) {
 				navigator.geolocation.getCurrentPosition(getTournaments);
 			} else {
@@ -28,13 +29,17 @@
 			}
 
 			function getTournaments(position) {
-			console.log("Latitude: " + position.coords.latitude +
-			"<br>Longitude: " + position.coords.longitude)
+			//console.log(page)
+			page = 1
+			document.getElementById("navBarBottom").style.display = "";
+			currentPage = document.getElementById("pageNav").innerText;
+			document.getElementById("pageNav").innerText = page;
 			$.ajax({url: "/sscoutAPI/smashgg",
 					data: {
 						type: "TournamentsByCoords",
 						coordinates: position.coords.latitude + ", " + position.coords.longitude,
-						radius: "50mi"
+						radius: "50mi",
+						page: page
 					},
 					method: "POST",
 					success: function(data) {
@@ -90,18 +95,13 @@
 							</section>
 
 						<!-- Footer -->
-							<!-- <footer>
-								<div class="pagination">
-									<a href="#" class="page active">1</a>
-									<a href="#" class="page">2</a>
-									<a href="#" class="page">3</a>
-									<span class="extra">&hellip;</span>
-									<a href="#" class="page">8</a>
-									<a href="#" class="page">9</a>
-									<a href="#" class="page">10</a>
+							<footer>
+								<div class="pagination" id="navBarBottom" style="justify-content: center; display: none;">
+									<a href="#" class="previous">Prev</a>
+									<a href="#" class="page" id="pageNav"></a>
 									<a href="#" class="next">Next</a>
 								</div>
-							</footer> -->
+							</footer>
 
 					</div>
 

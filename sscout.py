@@ -195,6 +195,7 @@ testPortPriorityQuery = """
       participants(query: {
         perPage: 100
         page: 2
+        sortBy: "seed"
       })
       {
         nodes
@@ -241,11 +242,14 @@ tournamentByRadiusQueryStr = """
 {
   tournaments(query: {
     perPage: 10
+    page: %s
+    sortBy: "startAt asc"
     filter: {
       location: {
         distanceFrom: "%s",
         distance: "%s"
       }
+      upcoming: true
     }
   }) 
   {
@@ -258,6 +262,40 @@ tournamentByRadiusQueryStr = """
       images
         {
         url
+        type
+        }
+      city
+      countryCode
+      isRegistrationOpen
+      startAt
+      endAt
+      links
+      {
+        facebook
+        discord
+      }      
+    }
+  }
+}
+"""
+playersByTournamentIdQueryStr = """
+{
+  tournaments(query: {
+    filter: {
+      id: %s
+    }
+  }) 
+  {
+  nodes
+    {
+      name
+      url
+      id
+      addrState
+      images
+        {
+        url
+        type
         }
       city
       countryCode
@@ -269,8 +307,8 @@ tournamentByRadiusQueryStr = """
         facebook
         discord
       }
-      participants(query: {
-        perPage: 5
+       participants(query: {
+        perPage: 100
         page: 1
         sortBy: "seed"
       })
@@ -324,7 +362,23 @@ tournamentByRadiusQueryStr = """
 
 @app.route("/")
 def sscoutHome():
-  return render_template('index.html')
+  if 'tournament' in request.args:
+    transport = RequestsHTTPTransport(url="https://api.smash.gg/gql/alpha", headers={'Authorization': smashGG_Token}, use_json=True)
+    client = Client(transport=transport, fetch_schema_from_transport=True)
+    tournamentID = request.args.get('tournament')
+    query = playersByTournamentIdQueryStr % (str(tournamentID))
+    queryResultDict = client.execute(gql(query))
+    tournament = queryResultDict['tournaments']['nodes'][0]
+    print(queryResultDict)
+    return render_template('tournamentAnalyze.html', 
+                            tournamentStartDate = datetime.fromtimestamp(tournament['startAt']).strftime("%x"),
+                            tournamentName = tournament['name'],
+                            tournamentDescription = "",
+                            tournamentImageURL = tournament['images'][0]['url']
+                          )
+
+  else:
+    return render_template('index.html')
 
 @app.route("/sscoutAPI/smashgg" , methods = ['POST'])
 def sscoutAPI_Smashgg():
@@ -335,8 +389,9 @@ def sscoutAPI_Smashgg():
     result = ""
     coords = request.form.get('coordinates')
     radius = request.form.get("radius")
+    page = request.form.get("page")
     print(radius, coords)
-    query = tournamentByRadiusQueryStr % (coords, radius)
+    query = tournamentByRadiusQueryStr % (page, coords, radius)
     #oh damn this actually returns a dict
     queryResultDict = client.execute(gql(query))
     print(queryResultDict)
@@ -357,15 +412,22 @@ def sscoutAPI_Smashgg():
 
     html = ""
     for tournament in queryResultDict['tournaments']['nodes']:
-      html += """
-          <article>
-            <header>
-              <h2><a href="?tournament="""+str(tournament['id'])+"""">"""+tournament['name']+"""</a></h2>
-              <h3>"""+datetime.fromtimestamp(tournament['startAt']).strftime("%x")+"""</h3>
-              <h3>"""+tournament['city']+ ", " +tournament['addrState']+"""</h3>
-            </header>
-            <a href="?tournament="""+str(tournament['id'])+"""" class="image fit"><img src=" """+tournament['images'][0]['url']+""" " alt="" /></a>
-          </article>"""
+      imgUrl = " "
+      if len(tournament['images']) > 0:
+        if type(tournament['images'][0]['url']) != 'NoneType':
+          imgUrl = tournament['images'][0]['url']
+      try:  
+        html += """
+            <article>
+              <header>
+                <h2><a href="?tournament="""+str(tournament['id'])+"""">"""+tournament['name']+"""</a></h2>
+                <h3>"""+datetime.fromtimestamp(tournament['startAt']).strftime("%x")+"""</h3>
+                <h3>"""+tournament['city']+ ", " +tournament['addrState']+"""</h3>
+              </header>
+              <a href="?tournament="""+str(tournament['id'])+"""" class="image fit"><img src=" """+ imgUrl +""" " alt="" style="max-width: 300px; margin: auto;"></a>
+            </article>"""
+      except Exception as e:
+        print(repr(e))
   return html
 
 if __name__ == "__main__":
