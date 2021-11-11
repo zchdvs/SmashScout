@@ -354,6 +354,21 @@ playersByTournamentIdQueryStr = """
 }
 """
 
+#Let's figure out how to query a specific player
+#queries for players are by ID, so we would need to first map all players to an ID, and periodically update this
+#players have user, and user has tournaments
+#so to create the dictionary, we would first need to loop through all tournaments, get all the participants, and then get player gamertag, id, user id, name, and slug.
+#can store these locally on a file as a csv, and then parse that everytime for easy access
+
+testQueryPlayerInformation = """
+"""
+
+#a search function for names would be nice, but very extra, let's assume at this point that they have the correct smashgg name that they want to look at
+#for a given user, display all tournaments
+
+#for a given user display all tournament videos involving them
+#this can be multiple youtube queries with smash, tournament name, and then player name.
+#will need a way to figure out how accurate this is
 
 # result = client.execute(gql(testPortPriorityQuery))
 # print(result)
