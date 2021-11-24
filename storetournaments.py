@@ -29,6 +29,9 @@ if(dbCursor.connection != dbInstance):
   print("connection to DB failed. exiting")
   exit
 
+#https://developer.smash.gg/docs/examples/queries/tournaments-by-videogame/
+#https://docs.google.com/spreadsheets/d/1l-mcho90yDq4TWD-Y9A22oqFXGo8-gBDJP0eTmRpTaQ/edit#gid=1924677423
+#can filter by videogameID if desired (maybe smash ultimate and melee for now?)
 templateQueryWATournaments = """
 {
   tournaments(query:{
