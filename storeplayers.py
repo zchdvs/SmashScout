@@ -47,7 +47,7 @@ templateQueryWATournamentPlayers = """
     {
       name
       participants(query: {
-        perPage: 100
+        perPage: 75
         page: xpageNumx
         sortBy: "seed"
       })
