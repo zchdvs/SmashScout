@@ -3,6 +3,7 @@ from datetime import datetime
 import apitoken
 import sqlite3
 import time
+import pandas as pd
 
 smashGG_Token = apitoken.smashGG_Token
 
@@ -82,18 +83,20 @@ templateQueryWATournamentPlayers = """
 }
 """
 
-#create the user id --> gamertag table
+#create the player id --> gamertag table
 #separate for faster querying of gamertag (and due to the possibility of multiple gamertags)
-dbCursor.execute("CREATE TABLE IF NOT EXISTS playermap (id INTEGER, gamertag TEXT)")
+dbCursor.execute("CREATE TABLE IF NOT EXISTS playermap (id INTEGER, gamertag TEXT UNIQUE)")
 
-#create the user id --> info table
+#create the player id --> info table
 #once we have found appropriate id for a gamertag
-dbCursor.execute("CREATE TABLE IF NOT EXISTS playerinfo (id INTEGER PRIMARY KEY, name TEXT, userslug TEXT, playerID INTEGER, linkedAccounts TEXT, authorizations TEXT)")
+dbCursor.execute("CREATE TABLE IF NOT EXISTS playerinfo (id INTEGER PRIMARY KEY, name TEXT, userslug TEXT, userID INTEGER, linkedAccounts TEXT, authorizations TEXT)")
 
 tagDiscrepancy= []
 missingUsers = []
 newTagNum = 0
 newUserInfoNum = 0
+
+errorEntries = []
 
 for row in dbCursor.execute("SELECT * FROM tournaments ORDER BY startDate DESC"):
   pageNum = 0
@@ -111,42 +114,44 @@ for row in dbCursor.execute("SELECT * FROM tournaments ORDER BY startDate DESC")
     for participant in result['tournaments']['nodes'][0]['participants']['nodes']:
       if(participant['user'] == None):
         missingUsers.append(participant)
-        continue
-      print(participant)
-      userid = participant['user']['id']
+        userid = -1
+        name = ''
+        slug = ''
+        authorizations = []
+      else:
+        userid = participant['user']['id']
+        name = participant['user']['name']
+        slug = participant['user']['slug']
+        authorizations= participant['user']['authorizations']
       gamerTag = participant['gamerTag']
       playerTag = participant['player']['gamerTag']
       #checking and storing discrepancies to read at the end
 
-      #try to add mapping (unless pre-existing)
-      try:
-        dbInstance.execute("INSERT INTO playermap VALUES (?,?)", (userid,playerTag))
-        newTagNum +=1
-      except sqlite3.IntegrityError:
-        print("mapping already exists, skipping")
-      
-      if gamerTag != playerTag:
-        tagDiscrepancy.append([gamerTag,playerTag])
-        try:
-          dbInstance.execute("INSERT INTO playermap VALUES (?,?)", (userid,gamerTag))
-          newTagNum +=1
-        except sqlite3.IntegrityError:
-          print("mapping already exists, skipping")
-
       #playerinfo (id INTEGER PRIMARY KEY, name TEXT, userslug TEXT, playerID INTEGER, linkedAccounts TEXT, authorizations TEXT)"
-      name = participant['user']['name']
-      slug = participant['user']['slug']
+
       playerID = participant['player']['id']
       linkedAccounts = participant['connectedAccounts']
-      authorizations= participant['user']['authorizations']
       if(linkedAccounts == None):
         linkedAccounts = {}
       print(linkedAccounts)
       print(authorizations)
+
+      #try to add mapping (unless pre-existing)
+      
+      dbInstance.execute("INSERT OR IGNORE INTO playermap VALUES (?,?)", (playerID,playerTag))
+      newTagNum +=1
+      
+      if gamerTag != playerTag:
+        tagDiscrepancy.append([gamerTag,playerTag])
+        dbInstance.execute("INSERT OR IGNORE INTO playermap VALUES (?,?)", (playerID,gamerTag))
+        newTagNum +=1
+
+
       try:
-        dbInstance.execute("INSERT INTO playerinfo VALUES (?,?,?,?,?,?)", (userid,name,slug,playerID,str(linkedAccounts),str(authorizations)))
+        dbInstance.execute("INSERT INTO playerinfo VALUES (?,?,?,?,?,?)", (playerID,name,slug,userid,str(linkedAccounts),str(authorizations)))
         newUserInfoNum += 1
-      except sqlite3.IntegrityError:
+      except sqlite3.IntegrityError as errMsg:
+        errorEntries = [playerID,userid,errMsg]
         print("mapping already exists, skipping")
       #try to store data (unless pre-existing)
     dbInstance.commit()
@@ -154,6 +159,8 @@ for row in dbCursor.execute("SELECT * FROM tournaments ORDER BY startDate DESC")
     pageNum += 1
   dbInstance.commit()
 
+
+dbInstance.close()
 print("Missing Users")
 print(missingUsers)
 print("DISCREPANCIES")
@@ -162,4 +169,12 @@ print("New tags")
 print(newTagNum)
 print("new user info")
 print(newUserInfoNum)
-dbInstance.close()
+
+pd.DataFrame(errorEntries).to_json(r'errorentries.json')
+pd.DataFrame(missingUsers).to_json(r'missingusers.json')
+pd.DataFrame(tagDiscrepancy).to_json(r'tagdiscrepancy.json')
+
+
+
+  
+
