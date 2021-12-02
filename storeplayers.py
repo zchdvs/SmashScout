@@ -4,6 +4,7 @@ import apitoken
 import sqlite3
 import time
 import pandas as pd
+import json
 
 smashGG_Token = apitoken.smashGG_Token
 
@@ -97,8 +98,10 @@ newTagNum = 0
 newUserInfoNum = 0
 
 errorEntries = []
-
+numTourney = 0
 for row in dbCursor.execute("SELECT * FROM tournaments ORDER BY startDate DESC"):
+  if(numTourney == 20):
+    break
   tournamentID = row[0]
   pageNum = 0
   print(row[0])
@@ -143,7 +146,7 @@ for row in dbCursor.execute("SELECT * FROM tournaments ORDER BY startDate DESC")
       newTagNum +=1
       
       if gamerTag != playerTag:
-        tagDiscrepancy.append([tournamentID, pageNum, gamerTag, playerTag])
+        tagDiscrepancy.append([tournamentID, pageNum, [gamerTag, playerTag]])
         dbInstance.execute("INSERT OR IGNORE INTO playermap VALUES (?,?)", (playerID,gamerTag))
         newTagNum +=1
 
@@ -152,12 +155,14 @@ for row in dbCursor.execute("SELECT * FROM tournaments ORDER BY startDate DESC")
         dbInstance.execute("INSERT INTO playerinfo VALUES (?,?,?,?,?,?)", (playerID,name,slug,userid,str(linkedAccounts),str(authorizations)))
         newUserInfoNum += 1
       except sqlite3.IntegrityError as errMsg:
-        errorEntries.append[tournamentID, pageNum, playerID, userid, errMsg]
+        errorEntries.append([tournamentID, pageNum, playerID, userid, errMsg.args])
         print("mapping already exists, skipping")
       #try to store data (unless pre-existing)
     dbInstance.commit()
     time.sleep(0.8)
     pageNum += 1
+  numTourney += 1
+
   dbInstance.commit()
 
 
@@ -171,9 +176,15 @@ dbInstance.close()
 # print("new user info")
 # print(newUserInfoNum)
 
-pd.DataFrame(errorEntries).to_json(r'errorentries.json')
-pd.DataFrame(missingUsers).to_json(r'missingusers.json')
-pd.DataFrame(tagDiscrepancy).to_json(r'tagdiscrepancy.json')
+#pd.DataFrame(errorEntries).to_json(r'errorentries.json', orient = 'records')
+#pd.DataFrame(missingUsers).to_json(r'missingusers.json', orient = 'records')
+#pd.DataFrame(tagDiscrepancy).to_json(r'tagdiscrepancy.json', orient = 'records')
+with open('errorentries.json', 'w') as output:
+  json.dump(errorEntries, output)
+with open('missingusers.json', 'w') as output:
+  json.dump(missingUsers, output)
+with open('tagdiscrepancy.json', 'w') as output:
+  json.dump(tagDiscrepancy, output)
 
 
 
