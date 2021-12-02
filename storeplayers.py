@@ -99,10 +99,11 @@ newUserInfoNum = 0
 errorEntries = []
 
 for row in dbCursor.execute("SELECT * FROM tournaments ORDER BY startDate DESC"):
+  tournamentID = row[0]
   pageNum = 0
   print(row[0])
   while(True):
-    queryWATournamentPlayers = templateQueryWATournamentPlayers.replace('xIDx', str(row[0])).replace('xpageNumx', str(pageNum))
+    queryWATournamentPlayers = templateQueryWATournamentPlayers.replace('xIDx', str(tournamentID)).replace('xpageNumx', str(pageNum))
     print(queryWATournamentPlayers)
     result = client.execute(gql(queryWATournamentPlayers))
     print()
@@ -113,7 +114,7 @@ for row in dbCursor.execute("SELECT * FROM tournaments ORDER BY startDate DESC")
       break
     for participant in result['tournaments']['nodes'][0]['participants']['nodes']:
       if(participant['user'] == None):
-        missingUsers.append(participant)
+        missingUsers.append([tournamentID, pageNum,participant])
         userid = -1
         name = ''
         slug = ''
@@ -142,7 +143,7 @@ for row in dbCursor.execute("SELECT * FROM tournaments ORDER BY startDate DESC")
       newTagNum +=1
       
       if gamerTag != playerTag:
-        tagDiscrepancy.append([gamerTag,playerTag])
+        tagDiscrepancy.append([tournamentID, pageNum, gamerTag, playerTag])
         dbInstance.execute("INSERT OR IGNORE INTO playermap VALUES (?,?)", (playerID,gamerTag))
         newTagNum +=1
 
@@ -151,7 +152,7 @@ for row in dbCursor.execute("SELECT * FROM tournaments ORDER BY startDate DESC")
         dbInstance.execute("INSERT INTO playerinfo VALUES (?,?,?,?,?,?)", (playerID,name,slug,userid,str(linkedAccounts),str(authorizations)))
         newUserInfoNum += 1
       except sqlite3.IntegrityError as errMsg:
-        errorEntries = [playerID,userid,errMsg]
+        errorEntries.append[tournamentID, pageNum, playerID, userid, errMsg]
         print("mapping already exists, skipping")
       #try to store data (unless pre-existing)
     dbInstance.commit()
@@ -161,14 +162,14 @@ for row in dbCursor.execute("SELECT * FROM tournaments ORDER BY startDate DESC")
 
 
 dbInstance.close()
-print("Missing Users")
-print(missingUsers)
-print("DISCREPANCIES")
-print(tagDiscrepancy)
-print("New tags")
-print(newTagNum)
-print("new user info")
-print(newUserInfoNum)
+# print("Missing Users")
+# print(missingUsers)
+# print("DISCREPANCIES")
+# print(tagDiscrepancy)
+# print("New tags")
+# print(newTagNum)
+# print("new user info")
+# print(newUserInfoNum)
 
 pd.DataFrame(errorEntries).to_json(r'errorentries.json')
 pd.DataFrame(missingUsers).to_json(r'missingusers.json')
