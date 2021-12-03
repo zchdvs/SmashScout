@@ -100,8 +100,6 @@ newUserInfoNum = 0
 errorEntries = []
 numTourney = 0
 for row in dbCursor.execute("SELECT * FROM tournaments ORDER BY startDate DESC"):
-  if(numTourney == 20):
-    break
   tournamentID = row[0]
   pageNum = 0
   print(row[0])
@@ -161,8 +159,6 @@ for row in dbCursor.execute("SELECT * FROM tournaments ORDER BY startDate DESC")
     dbInstance.commit()
     time.sleep(0.8)
     pageNum += 1
-  numTourney += 1
-
   dbInstance.commit()
 
 
