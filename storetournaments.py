@@ -53,7 +53,6 @@ templateQueryWATournaments = """
       }
     }
 }
-  
 """
 
 numNewTournaments = 0
@@ -73,16 +72,12 @@ while True:
   if(len(result['tournaments']['nodes']) == 0):
     #break if there are no more tournaments
     break
-  #
   numNewTournamentsThisPage = 0
   print('')
   time.sleep(0.8)
   for tournament in result['tournaments']['nodes']:
     print(tournament)
     tournamentInfo = []
-    #tournament ID, name, slug, attendees, startAt, endAt, 
-    #insertionString = '''INSERT INTO tournaments VALUES({id}, \'{name}\', \'{slug}\', {numAttendees}, {startDate}, {endDate} )'''.format( id=tournament['id'],name=tournament['name'].replace("\'", "\\\'"), slug=tournament['slug'], numAttendees=tournament['numAttendees'], startDate=tournament['startAt'], endDate = tournament['endAt'] )
-    #print(insertionString)
     try:
       #dbInstance.execute(insertionString)
       dbCursor.execute("INSERT INTO tournaments VALUES (?,?,?,?,?,?)", (tournament['id'], tournament['name'], tournament['slug'], tournament['numAttendees'], tournament['startAt'], tournament['endAt']))
@@ -99,7 +94,6 @@ while True:
     break
 
 dbInstance.commit()
-#while len(result['tournaments']['nodes']) 
 
 print("Page has " + str(len(result['tournaments']['nodes'])) + " tournaments")
 print(str(numNewTournaments) + " added.")
